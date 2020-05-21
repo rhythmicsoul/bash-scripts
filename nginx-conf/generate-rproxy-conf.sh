@@ -90,7 +90,9 @@ EOF
 
     mv "$tmpconf" "$UPSTREAM_CONF"
     echo "Added the upstream server $name with IP address $ip"
-    check_reload_nginx || echo "Reverting the upstream configuration changes..." && delete_upstream "$name"
+    if ! check_reload_nginx; then 
+        echo "Reverting the upstream configuration changes..." && delete_upstream "$name"
+    fi
 }
 
 delete_upstream(){
@@ -100,9 +102,13 @@ delete_upstream(){
 
     sed -e "/upstream $name\s{/,/}/d" "$UPSTREAM_CONF" > "$tmpconf"
 
+    cp "$UPSTREAM_CONF" "$UPSTREAM_CONF.bak"
     mv "$tmpconf" "$UPSTREAM_CONF"
     echo "Deleted upstream server $name"
-    check_reload_nginx
+
+    if ! check_reload_nginx; then 
+        echo "Reverting the upstream configuration changes..." && cp "$UPSTREAM_CONF.bak" "$UPSTREAM_CONF" && check_reload_nginx
+    fi
 }
 
 list_servers(){
@@ -167,7 +173,10 @@ EOF
     mv "$tmpconf" "$VHOST_CONF_AVAILABLE_DIR"
     ln -s "$VHOST_CONF_AVAILABLE_DIR/$server_name.conf" "$VHOST_CONF_DIR/$server_name.conf"
 	echo "Server $server_name added successfully"
-    check_reload_nginx || echo "Reverting the changes made in the server configuration..." && delete_server "$server_name"
+
+    if ! check_reload_nginx; then 
+        echo "Reverting the changes made in the server configuration..." && delete_server "$server_name"
+    fi
 }
 
 delete_server(){
@@ -175,8 +184,9 @@ delete_server(){
     local server_name="$1"
 
     if [[ -f "$VHOST_CONF_AVAILABLE_DIR/$server_name.conf" ]]; then
-        rm -f "$VHOST_CONF_AVAILABLE_DIR/$server_name.conf"
         unlink "$VHOST_CONF_DIR/$server_name.conf"
+        cp "$VHOST_CONF_AVAILABLE_DIR/$server_name.conf" "$VHOST_CONF_AVAILABLE_DIR/$server_name.conf.bak"
+        rm -f "$VHOST_CONF_AVAILABLE_DIR/$server_name.conf"
     else
         echo "Server Configuration not found at $VHOST_CONF_AVAILABLE_DIR"
         exit 10
@@ -188,7 +198,10 @@ delete_server(){
 
 check_reload_nginx(){
     echo "Checking nginx configuration....." && nginx -t || return 20
-    echo "Reloading Nginx Configuration...." && nginx -s reload || echo "Nginx Configuration Reload Failed" && return 21
+    echo "Reloading Nginx Configuration...." 
+    if ! nginx -s reload; then
+        echo "Nginx Configuration Reload Failed" && return 21
+    fi
     echo "Nginx Conifguration Reloaded Successfully"
 }
 
