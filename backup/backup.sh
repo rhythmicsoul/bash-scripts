@@ -44,6 +44,7 @@ parse_config() {
     BACKUP_STAGING_AREA=$(grep "BACKUP_STAGING_AREA" ${conf_file} | grep -vE "^#|^$" | awk -F "BACKUP_STAGING_AREA=" '{print $2}' | sed 's/^"//' | sed 's/"$//')
 
     EMAIL_ADDRESS=$(grep "EMAIL_ADDRESS" ${conf_file} | grep -vE "^#|^$" | awk -F "EMAIL_ADDRESS=" '{print $2}' | sed 's/^"//' | sed 's/"$//')
+    EMAIL_ADDRESS_FROM=$(grep "EMAIL_ADDRESS_FROM" ${conf_file} | grep -vE "^#|^$" | awk -F "EMAIL_ADDRESS_FROM=" '{print $2}' | sed 's/^"//' | sed 's/"$//')
 
     EMAIL_TEMPLATE_LOCATION=$(grep "EMAIL_TEMPLATE_LOCATION" ${conf_file} | grep -vE "^#|^$" | awk -F "EMAIL_TEMPLATE_LOCATION=" '{print $2}' | sed 's/^"//' | sed 's/"$//')
 
@@ -134,8 +135,8 @@ email_template() {
 
     if [[ ${success_status} == "Success" ]]; then
         cat << EOF > "${EMAIL_TEMPLATE_LOCATION}"
-From: Backup <backup@mos.com.np>
-To: Server MOS <${to_address}>
+From: Backup <${EMAIL_ADDRESS_FROM}>
+To: Backup Notification <${to_address}>
 Subject: Backup of $(hostname) Sucessful
 Backup of $(hostname) completed successfully at $(date "+%F %H:%M:%S"). Please check the logs for a detailed description located at "${LOG_FILE}"
 
@@ -144,8 +145,8 @@ EOF
 
     elif [[ ${success_status} == "Fail" ]]; then
         cat << EOF > "${EMAIL_TEMPLATE_LOCATION}"
-From: Backup <backup@mos.com.np>
-To: Server MOS <${to_address}>
+From: Backup <${EMAIL_ADDRESS_FROM}>
+To: Backup Notification <${to_address}>
 Subject: Backup of $(hostname) Failed
 Backup of $(hostname) failed  at $(date "+%F %H:%M:%S"). Please check the logs for a detailed description located at "${LOG_ERROR_FILE}"
 
@@ -178,7 +179,7 @@ send_email() {
 
     check_bin "sendmail"
 
-    cat "${email_file}" | sendmail -r "backup@mos.com.np" "${to_address}"
+    cat "${email_file}" | sendmail -r "${EMAIL_ADDRESS_FROM}" "${to_address}"
 }
 
 main() {
